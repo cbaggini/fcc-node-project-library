@@ -1,6 +1,19 @@
 "use strict";
 
 const { v4: uuidv4 } = require("uuid");
+const MongoClient = require("mongodb").MongoClient;
+
+const connectionString = process.env.DB;
+const dbOptions = {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+};
+
+const insert = async (client, newBook) => {
+  await client.connect();
+  const collection = client.db("myFirstDatabase").collection("books");
+  const result = await collection.insertOne(newBook);
+};
 
 module.exports = function (app) {
   app
@@ -18,7 +31,9 @@ module.exports = function (app) {
           _id: uuidv4(),
           comments: [],
         };
-        // TODO write new book to db
+        const client = new MongoClient(connectionString, dbOptions);
+        insert(client, newBook).catch(console.dir);
+        client.close();
         res.json({ title: newBook.title, _id: newBook._id });
       } else {
         res.send("missing required field title");
