@@ -30,6 +30,12 @@ const getBooks = async (client) => {
   return result;
 };
 
+const deleteAll = async (client) => {
+  await client.connect();
+  const collection = client.db("myFirstDatabase").collection("books");
+  await collection.drop();
+};
+
 module.exports = function (app) {
   app
     .route("/api/books")
@@ -42,6 +48,7 @@ module.exports = function (app) {
 
     .post(function (req, res) {
       let title = req.body.title;
+      console.log(req.body);
       if (title) {
         const newBook = {
           ...req.body,
@@ -58,7 +65,10 @@ module.exports = function (app) {
     })
 
     .delete(function (req, res) {
-      //if successful response will be 'complete delete successful'
+      const client = new MongoClient(connectionString, dbOptions);
+      deleteAll(client).catch(console.dir);
+      client.close();
+      res.send("complete delete successful");
     });
 
   app
