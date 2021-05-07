@@ -15,12 +15,29 @@ const insert = async (client, newBook) => {
   const result = await collection.insertOne(newBook);
 };
 
+const getBooks = async (client) => {
+  await client.connect();
+  const collection = client.db("myFirstDatabase").collection("books");
+  const cursor = await collection.find();
+  let result = [];
+  await cursor.forEach((el) =>
+    result.push({
+      _id: el._id,
+      title: el.title,
+      commentcount: el.comments.length,
+    })
+  );
+  return result;
+};
+
 module.exports = function (app) {
   app
     .route("/api/books")
-    .get(function (req, res) {
-      //response will be array of book objects
-      //json res format: [{"_id": bookid, "title": book_title, "commentcount": num_of_comments },...]
+    .get(async function (req, res) {
+      const client = new MongoClient(connectionString, dbOptions);
+      const books = await getBooks(client).catch(console.dir);
+      client.close();
+      res.send(books);
     })
 
     .post(function (req, res) {
@@ -36,7 +53,7 @@ module.exports = function (app) {
         client.close();
         res.json({ title: newBook.title, _id: newBook._id });
       } else {
-        res.send("missing required field title");
+        res.status(400).send("missing required field title");
       }
     })
 
