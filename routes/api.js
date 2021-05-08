@@ -12,7 +12,7 @@ const dbOptions = {
 const insert = async (client, newBook) => {
   await client.connect();
   const collection = client.db("myFirstDatabase").collection("books");
-  const result = await collection.insertOne(newBook);
+  await collection.insertOne(newBook);
 };
 
 const getBooks = async (client) => {
@@ -36,6 +36,27 @@ const deleteAll = async (client) => {
   await collection.drop();
 };
 
+const getOneBook = async (client, bookId) => {
+  await client.connect();
+  const collection = client.db("myFirstDatabase").collection("books");
+  const result = await collection.findOne({ _id: bookId });
+  return result;
+};
+
+const AddComment = async (client, bookId, comment) => {
+  await client.connect();
+  const collection = client.db("myFirstDatabase").collection("books");
+  await collection.updateOne(
+    { _id: bookId },
+    { $push: { comments: comment } },
+    {
+      upsert: false,
+    }
+  );
+  const result = await collection.findOne({ _id: bookId });
+  return result;
+};
+
 module.exports = function (app) {
   app
     .route("/api/books")
@@ -48,7 +69,6 @@ module.exports = function (app) {
 
     .post(function (req, res) {
       let title = req.body.title;
-      console.log(req.body);
       if (title) {
         const newBook = {
           ...req.body,
@@ -73,15 +93,32 @@ module.exports = function (app) {
 
   app
     .route("/api/books/:id")
-    .get(function (req, res) {
-      let bookid = req.params.id;
-      //json res format: {"_id": bookid, "title": book_title, "comments": [comment,comment,...]}
+    .get(async function (req, res) {
+      let bookId = req.params.id;
+      const client = new MongoClient(connectionString, dbOptions);
+      const book = await getOneBook(client, bookId).catch(console.dir);
+      client.close();
+      if (book) {
+        res.send(book);
+      } else {
+        res.send("no book exists");
+      }
     })
 
-    .post(function (req, res) {
-      let bookid = req.params.id;
+    .post(async function (req, res) {
+      let bookId = req.params.id;
       let comment = req.body.comment;
-      //json res format same as .get
+      if (!comment) {
+        res.send("missing required field comment");
+      }
+      const client = new MongoClient(connectionString, dbOptions);
+      const book = await AddComment(client, bookId, comment).catch(console.dir);
+      client.close();
+      if (book) {
+        res.send(book);
+      } else {
+        res.send("no book exists");
+      }
     })
 
     .delete(function (req, res) {
