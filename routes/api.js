@@ -57,6 +57,13 @@ const AddComment = async (client, bookId, comment) => {
   return result;
 };
 
+const deleteOne = async (client, bookId) => {
+  await client.connect();
+  const collection = client.db("myFirstDatabase").collection("books");
+  const result = await collection.deleteOne({ _id: bookId });
+  return result;
+};
+
 module.exports = function (app) {
   app
     .route("/api/books")
@@ -109,7 +116,7 @@ module.exports = function (app) {
       let bookId = req.params.id;
       let comment = req.body.comment;
       if (!comment) {
-        res.send("missing required field comment");
+        res.status(400).send("missing required field comment");
       }
       const client = new MongoClient(connectionString, dbOptions);
       const book = await AddComment(client, bookId, comment).catch(console.dir);
@@ -117,12 +124,22 @@ module.exports = function (app) {
       if (book) {
         res.send(book);
       } else {
-        res.send("no book exists");
+        res.status(404).send("no book exists");
       }
     })
 
-    .delete(function (req, res) {
-      let bookid = req.params.id;
-      //if successful response will be 'delete successful'
+    .delete(async function (req, res) {
+      let bookId = req.params.id;
+      const client = new MongoClient(connectionString, dbOptions);
+      const book = await getOneBook(client, bookId).catch(console.dir);
+      client.close();
+      if (book) {
+        const client = new MongoClient(connectionString, dbOptions);
+        await deleteOne(client, bookId).catch(console.dir);
+        client.close();
+        res.send("delete successful");
+      } else {
+        res.status(404).send("no book exists");
+      }
     });
 };
